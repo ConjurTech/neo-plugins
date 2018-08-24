@@ -40,8 +40,6 @@ namespace Neo.Plugins
                     yield return tx;
                 else if (count++ < Settings.Default.MaxFreeTransactionsPerBlock)
                     yield return tx;
-                else
-                    yield break;
         }
     }
 }
