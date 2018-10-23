@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimplePolicy", "SimplePolicy\SimplePolicy.csproj", "{322C366E-F891-47FD-A039-0FEF79BCB6D5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationLogs", "ApplicationLogs\ApplicationLogs.csproj", "{84DA8EA6-EF60-4FCD-B1C6-65C1A8323B3F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventsWriter", "EventsWriter\EventsWriter.csproj", "{84DA8EA6-EF60-4FCD-B1C6-65C1A8323B3F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RpcSecurity", "RpcSecurity\RpcSecurity.csproj", "{6800D782-8EC0-49E9-98C4-195C8F781A1F}"
 EndProject

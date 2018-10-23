@@ -4,10 +4,11 @@
     <Version>2.9.0</Version>
     <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
     <RootNamespace>Neo.Plugins</RootNamespace>
+    <AssemblyName>EventsWriter</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="ApplicationLogs\config.json">
+    <None Update="EventsWriter\config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
@@ -15,6 +16,8 @@
 
   <ItemGroup>
     <PackageReference Include="Neo" Version="2.9.0" />
+    <PackageReference Include="Npgsql" Version="4.0.3" />
+    <PackageReference Include="SharpRaven" Version="2.4.1-unstable0015" />
   </ItemGroup>
 
 </Project>
