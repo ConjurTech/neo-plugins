@@ -8,7 +8,7 @@ namespace Neo.Plugins
 {
     internal class Settings
     {
-        public string DatabaseConnString { get; }
+        public HashSet<string> DatabaseConnString { get; }
         public string SentryUrl { get; }
         public HashSet<string> ContractHashList { get; }
 
@@ -21,7 +21,7 @@ namespace Neo.Plugins
 
         public Settings(IConfigurationSection section)
         {
-            DatabaseConnString = section.GetSection("DatabaseConnString").Value;
+            DatabaseConnString = new HashSet<string>(section.GetSection("DatabaseConnString").GetChildren().Select(p => p.Value.ToString()));
             SentryUrl = section.GetSection("SentryUrl").Value;
             ContractHashList = new HashSet<string>(section.GetSection("ContractHashList").GetChildren().Select(p => p.Value.ToString()));
         }

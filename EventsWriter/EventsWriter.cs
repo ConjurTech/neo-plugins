@@ -11,6 +11,7 @@ using Npgsql;
 using NpgsqlTypes;
 using SharpRaven;
 using SharpRaven.Data;
+using System.Collections.Generic;
 
 namespace Neo.Plugins
 {
@@ -27,21 +28,33 @@ namespace Neo.Plugins
 
     internal class EventsWriter : UntypedActor
     {
-        private readonly NpgsqlConnection conn;
+        private List<NpgsqlConnection> conn = new List<NpgsqlConnection>();
 
         public EventsWriter(IActorRef blockchain)
         {
             Console.WriteLine("initializing EventsWriter");
             blockchain.Tell(new Blockchain.Register());
-            conn = new NpgsqlConnection(Settings.Default.DatabaseConnString);
-            conn.Open();
+
+            foreach(string connString in Settings.Default.DatabaseConnString)
+            {
+                Console.WriteLine(connString);
+                conn.Add(new NpgsqlConnection(connString));
+            }
+
+            foreach (NpgsqlConnection c in conn)
+            {
+                c.Open();
+            }
         }
 
         ~EventsWriter()
         {
-            if (conn != null && conn.State == System.Data.ConnectionState.Open)
+            foreach (NpgsqlConnection c in conn)
             {
-                conn.Close();
+                if (c != null && c.State == System.Data.ConnectionState.Open)
+                {
+                    c.Close();
+                }
             }
         }
 
@@ -151,15 +164,18 @@ namespace Neo.Plugins
 
         private void WriteToPsql(SmartContractEvent contractEvent)
         {
-            WriteToEventTable(contractEvent, conn);
+            foreach (NpgsqlConnection c in conn)
+            {
+                WriteToEventTable(contractEvent, c);
 
-            if (contractEvent.eventType == "created")
-            {
-                WriteToOfferTable(contractEvent, conn);
-            }
-            else if (contractEvent.eventType == "filled")
-            {
-                WriteToTradeTable(contractEvent, conn);
+                if (contractEvent.eventType == "created")
+                {
+                    WriteToOfferTable(contractEvent, c);
+                }
+                else if (contractEvent.eventType == "filled")
+                {
+                    WriteToTradeTable(contractEvent, c);
+                }
             }
         }
 
