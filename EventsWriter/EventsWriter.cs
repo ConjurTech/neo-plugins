@@ -27,11 +27,12 @@ namespace Neo.Plugins
 
     internal class EventsWriter : UntypedActor
     {
-        private readonly DB db;
         private readonly NpgsqlConnection conn;
 
-        public EventsWriter()
+        public EventsWriter(IActorRef blockchain)
         {
+            Console.WriteLine("initializing EventsWriter");
+            blockchain.Tell(new Blockchain.Register());
             conn = new NpgsqlConnection(Settings.Default.DatabaseConnString);
             conn.Open();
         }
@@ -45,7 +46,7 @@ namespace Neo.Plugins
         }
 
         protected override void OnReceive(object message)
-        {
+        {            
             if (message is Blockchain.ApplicationExecuted e)
             {
                 JObject json = new JObject();
@@ -54,13 +55,13 @@ namespace Neo.Plugins
                 var blockTime = Blockchain.Singleton.GetBlock(Blockchain.Singleton.GetBlockHash(blockHeight)).Timestamp;
                 Console.WriteLine("Executed txn: {0}, block height: {1}", transactionHash, blockHeight);
 
-                foreach(var result in e.ExecutionResults)
+                foreach (var result in e.ExecutionResults)
                 {
                     for (uint index = 0; index < result.Notifications.Length; index++)
                     {
                         var notification = result.Notifications[index];
                         var scriptHash = notification.ScriptHash.ToString().Substring(2);
-
+                        
                         if (!Settings.Default.ContractHashList.Contains(scriptHash)) continue;
 
                         try
@@ -137,7 +138,7 @@ namespace Neo.Plugins
                         }
                         catch (Exception ex)
                         {
-                            string connString = Environment.GetEnvironmentVariable("SENTRY_URL");
+                            string connString = Settings.Default.SentryUrl;
                             var ravenClient = new RavenClient(connString);
                             ravenClient.Capture(new SentryEvent(ex));
                             PrintErrorLogs(ex);
@@ -165,6 +166,7 @@ namespace Neo.Plugins
         private void WriteToEventTable(SmartContractEvent contractEvent, NpgsqlConnection conn)
         {
             Console.WriteLine(String.Format("Inserting {0} event {1}, block height: {2}", contractEvent.eventType, contractEvent.eventPayload, contractEvent.blockNumber));
+
             try
             {
                 using (var cmd = new NpgsqlCommand(
@@ -174,12 +176,12 @@ namespace Neo.Plugins
                     "current_timestamp, current_timestamp)", conn))
                 {
                     cmd.Parameters.AddWithValue("blockchain", "neo");
-                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Integer, contractEvent.blockNumber);
+                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Oid, contractEvent.blockNumber);
                     cmd.Parameters.AddWithValue("transactionHash", contractEvent.transactionHash);
                     cmd.Parameters.AddWithValue("contractHash", contractEvent.contractHash);
                     cmd.Parameters.AddWithValue("eventType", contractEvent.eventType);
                     cmd.Parameters.AddWithValue("eventTime", NpgsqlDbType.Timestamp, UnixTimeStampToDateTime(contractEvent.eventTime));
-                    cmd.Parameters.AddWithValue("eventIndex", NpgsqlDbType.Numeric, contractEvent.eventIndex);
+                    cmd.Parameters.AddWithValue("eventIndex", NpgsqlDbType.Oid, contractEvent.eventIndex);
                     cmd.Parameters.AddWithValue("eventPayload", NpgsqlDbType.Jsonb, contractEvent.eventPayload.ToString());
 
                     int nRows = cmd.ExecuteNonQuery();
@@ -210,9 +212,9 @@ namespace Neo.Plugins
                 var address = contractEvent.eventPayload[0].AsString();
                 var offerHash = contractEvent.eventPayload[1].AsString();
                 var offerAssetId = contractEvent.eventPayload[2].AsString();
-                var offerAmount = contractEvent.eventPayload[3].AsString();
+                var offerAmount = contractEvent.eventPayload[3].AsNumber();
                 var wantAssetId = contractEvent.eventPayload[4].AsString();
-                var wantAmount = contractEvent.eventPayload[5].AsString();
+                var wantAmount = contractEvent.eventPayload[5].AsNumber();
                 var availableAmount = offerAmount;
 
                 using (var cmd = new NpgsqlCommand(
@@ -223,7 +225,7 @@ namespace Neo.Plugins
                 "@availableAmount, @offerHash, @offerAssetId, @offerAmount, @wantAssetId,  @wantAmount, " +
                     "current_timestamp, current_timestamp)", conn))
                 {
-                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Integer, contractEvent.blockNumber);
+                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Oid, contractEvent.blockNumber);
                     cmd.Parameters.AddWithValue("transactionHash", contractEvent.transactionHash);
                     cmd.Parameters.AddWithValue("contractHash", contractEvent.contractHash);
                     cmd.Parameters.AddWithValue("eventTime", NpgsqlDbType.Timestamp, UnixTimeStampToDateTime(contractEvent.eventTime));
@@ -257,18 +259,18 @@ namespace Neo.Plugins
 
         private static void WriteToTradeTable(SmartContractEvent contractEvent, NpgsqlConnection conn)
         {
-            Console.WriteLine(String.Format("Inserting {0}, block height: {1}", contractEvent.eventPayload, contractEvent.blockNumber));
+            Console.WriteLine(String.Format("Inserting {0} trade, block height: {1}", contractEvent.eventPayload, contractEvent.blockNumber));
 
             string connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
             try
             {
                 var address = contractEvent.eventPayload[0].AsString();
                 var offerHash = contractEvent.eventPayload[1].AsString();
-                var filledAmount = contractEvent.eventPayload[2].AsString();
+                var filledAmount = contractEvent.eventPayload[2].AsNumber();
                 var offerAssetId = contractEvent.eventPayload[3].AsString();
-                var offerAmount = contractEvent.eventPayload[4].AsString();
+                var offerAmount = contractEvent.eventPayload[4].AsNumber();
                 var wantAssetId = contractEvent.eventPayload[5].AsString();
-                var wantAmount = contractEvent.eventPayload[6].AsString();
+                var wantAmount = contractEvent.eventPayload[6].AsNumber();
 
                 using (var cmd = new NpgsqlCommand(
                 "INSERT INTO trades (block_number, transaction_hash, contract_hash, address, offer_hash, filled_amount, " +
@@ -276,7 +278,7 @@ namespace Neo.Plugins
                 "VALUES (@blockNumber, @transactionHash, @contractHash, @address, @offerHash, @filledAmount, " +
                 "@offerAssetId, @offerAmount, @wantAssetId, @wantAmount, @eventTime, @blockchain, current_timestamp, current_timestamp)", conn))
                 {
-                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Integer, contractEvent.blockNumber);
+                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Oid, contractEvent.blockNumber);
                     cmd.Parameters.AddWithValue("transactionHash", contractEvent.transactionHash);
                     cmd.Parameters.AddWithValue("contractHash", contractEvent.contractHash);
                     cmd.Parameters.AddWithValue("address", NpgsqlDbType.Varchar, address);
@@ -306,6 +308,11 @@ namespace Neo.Plugins
                     throw ex;
                 }
             }
+        }
+
+        public static Props Props(IActorRef blockchain)
+        {
+            return Akka.Actor.Props.Create(() => new EventsWriter(blockchain));
         }
 
         private static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
