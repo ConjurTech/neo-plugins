@@ -15,16 +15,16 @@ using System.Collections.Generic;
 
 namespace Neo.Plugins
 {
-    internal struct SmartContractEvent
-    {
-        public uint blockNumber;
-        public string transactionHash;
-        public string contractHash;
-        public uint eventTime;
-        public string eventType;
-        public JArray eventPayload;
-        public uint eventIndex;
-    }
+    //internal struct SmartContractEvent
+    //{
+    //    public uint blockNumber;
+    //    public string transactionHash;
+    //    public string contractHash;
+    //    public uint eventTime;
+    //    public string eventType;
+    //    public JArray eventPayload;
+    //    public uint eventIndex;
+    //}
 
     internal class EventsWriter : UntypedActor
     {
