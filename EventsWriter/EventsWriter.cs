@@ -70,6 +70,12 @@ namespace Neo.Plugins
 
                 foreach (var result in e.ExecutionResults)
                 {
+                    if (result.VMState.HasFlag(VMState.FAULT))
+                    {
+                        Console.WriteLine("Transaction execution faulted!");
+                        continue;
+                    }
+
                     for (uint index = 0; index < result.Notifications.Length; index++)
                     {
                         var notification = result.Notifications[index];
