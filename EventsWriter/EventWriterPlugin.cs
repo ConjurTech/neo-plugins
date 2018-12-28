@@ -7,10 +7,13 @@ using Neo.VM;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SData = System.Data;
+using SText = System.Text;
 using Npgsql;
 using NpgsqlTypes;
 using SharpRaven;
 using SharpRaven.Data;
+using static Neo.Ledger.Blockchain;
 
 namespace Neo.Plugins
 {
@@ -25,15 +28,8 @@ namespace Neo.Plugins
         public uint eventIndex;
     }
 
-    public class EventWriterPlugin : IPersistencePlugin
+    public class EventWriterPlugin : Plugin, IPersistencePlugin
     {
-        // public override string Name => "EventWriterPlugin";
-
-        //public EventWriterPlugin()
-        //{
-        //    System.ActorSystem.ActorOf(EventsWriter.Props(System.Blockchain));
-        //}
-
         private List<NpgsqlConnection> conn = new List<NpgsqlConnection>();
 
         public EventWriterPlugin()
@@ -53,125 +49,124 @@ namespace Neo.Plugins
         }
 
         ~EventWriterPlugin()
-        {
+        {   
             foreach (NpgsqlConnection c in conn)
             {
-                if (c != null && c.State == System.Data.ConnectionState.Open)
+                using (System)
                 {
-                    c.Close();
+                    if (c != null && c.State == SData.ConnectionState.Open)
+                    {
+                        c.Close();
+                    }
                 }
+                
             }
         }
 
-        public void OnPersist(Persistence.Snapshot snapshot)
+        public override void Configure()
         {
-            var transactions = snapshot.PersistingBlock.Transactions;
-            
-            for(uint i=0; i < transactions.Length; i++)
-            {
-                var transaction = transactions[i];
+            Settings.Load(GetConfiguration());
+        }
 
-                if (transaction is InvocationTransaction tx_invocation)
+        public void OnPersist(Persistence.Snapshot snapshot, List<ApplicationExecuted> applicationExecutedList)
+        {
+           Console.WriteLine(String.Format("On persist called at blockheight={0}", snapshot.Height.ToString()));
+           foreach( var applicationExecuted in applicationExecutedList)
+           {
+                foreach( var result in applicationExecuted.ExecutionResults)
                 {
-                    using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas))
+                    if (result.VMState.HasFlag(VMState.FAULT))
                     {
-                        engine.LoadScript(tx_invocation.Script);
-                        engine.Execute();
+                        Console.WriteLine("Transaction execution faulted!");
+                        continue;
+                    }
 
-                        var VMState = engine.State;
-                        var gasConsumed = engine.GasConsumed;
-                        var notifications = engine.Service.Notifications.ToArray();
-                        var blockHeight = snapshot.Height;
-                        var transactionHash = transaction.Hash.ToString();
-                        var blockTime = snapshot.PersistingBlock.Timestamp;
+                    for (uint index = 0; index < result.Notifications.Length; index++)
+                    {
+                        var notification = result.Notifications[index];
+                        var scriptHash = notification.ScriptHash.ToString().Substring(2);
 
-                        for (uint index = 0; index < notifications.Length; index++)
+                        if (!Settings.Default.ContractHashList.Contains(scriptHash)) continue;
+
+                        try
                         {
-                            var notification = notifications[index];
-                            var scriptHash = notification.ScriptHash.ToString().Substring(2);
+                            var payload = notification.State.ToParameter();
+                            var stack = (VM.Types.Array)notification.State;
+                            string eventType = "";
+                            JArray eventPayload = new JArray();
 
-                            if (!Settings.Default.ContractHashList.Contains(scriptHash)) continue;
-
-                            try
+                            for (int i = 0; i < stack.Count; i++)
                             {
-                                var payload = notification.State.ToParameter();
-                                var stack = (VM.Types.Array)notification.State;
-                                string eventType = "";
-                                JArray eventPayload = new JArray();
-
-                                for (int j = 0; j < stack.Count; j++)
+                                var bytes = stack[i].GetByteArray();
+                                if (i == 0)
                                 {
-                                    var bytes = stack[j].GetByteArray();
-                                    if (j == 0)
+                                    eventType = SText.Encoding.UTF8.GetString(bytes);
+                                }
+                                else
+                                {
+                                    string type = stack[i].GetType().ToString();
+                                    switch (type)
                                     {
-                                        eventType = System.Text.Encoding.UTF8.GetString(bytes);
-                                    }
-                                    else
-                                    {
-                                        string type = stack[j].GetType().ToString();
-                                        switch (type)
-                                        {
-                                            case "Neo.VM.Types.Boolean":
-                                                {
-                                                    eventPayload.Add(stack[j].GetBoolean());
-                                                    break;
-                                                }
-                                            case "Neo.VM.Types.String":
-                                                {
-                                                    eventPayload.Add(stack[j].GetString());
-                                                    break;
-                                                }
-                                            case "Neo.VM.Types.Integer":
-                                                {
-                                                    eventPayload.Add(stack[j].GetBigInteger().ToString());
-                                                    break;
-                                                }
-                                            case "Neo.VM.Types.ByteArray":
-                                                {
-                                                    if (bytes.Length == 20 || bytes.Length == 32)
-                                                    {
-                                                        string hexString = bytes.Reverse().ToHexString();
-                                                        eventPayload.Add(hexString);
-                                                    }
-                                                    else
-                                                    {
-                                                        eventPayload.Add(stack[j].GetBigInteger().ToString());
-                                                    }
-                                                    break;
-                                                }
-                                            default:
+                                        case "Neo.VM.Types.Boolean":
+                                            {
+                                                eventPayload.Add(stack[i].GetBoolean());
+                                                break;
+                                            }
+                                        case "Neo.VM.Types.String":
+                                            {
+                                                eventPayload.Add(stack[i].GetString());
+                                                break;
+                                            }
+                                        case "Neo.VM.Types.Integer":
+                                            {
+                                                eventPayload.Add(stack[i].GetBigInteger().ToString());
+                                                break;
+                                            }
+                                        case "Neo.VM.Types.ByteArray":
+                                            {
+                                                if (bytes.Length == 20 || bytes.Length == 32)
                                                 {
                                                     string hexString = bytes.Reverse().ToHexString();
                                                     eventPayload.Add(hexString);
-                                                    break;
                                                 }
+                                                else
+                                                {
+                                                    eventPayload.Add(stack[i].GetBigInteger().ToString());
+                                                }
+                                                break;
+                                            }
+                                        default:
+                                            {
+                                                string hexString = bytes.Reverse().ToHexString();
+                                                eventPayload.Add(hexString);
+                                                break;
+                                            }
 
-                                        }
                                     }
                                 }
-
-                                var scEvent = new SmartContractEvent
-                                {
-                                    blockNumber = blockHeight,
-                                    transactionHash = transactionHash,
-                                    contractHash = scriptHash,
-                                    eventType = eventType,
-                                    eventPayload = eventPayload,
-                                    eventTime = blockTime,
-                                    eventIndex = index,
-                                };
-
-                                WriteToPsql(scEvent);
-
                             }
-                            catch (Exception ex)
+
+                            var scEvent = new SmartContractEvent
                             {
-                                string connString = Settings.Default.SentryUrl;
-                                var ravenClient = new RavenClient(connString);
-                                ravenClient.Capture(new SentryEvent(ex));
-                                PrintErrorLogs(ex);
-                                throw ex;
-                            }
+                                blockNumber = snapshot.PersistingBlock.Index,
+                                transactionHash = applicationExecuted.Transaction.Hash.ToString().Substring(2),
+                                contractHash = scriptHash,
+                                eventType = eventType,
+                                eventPayload = eventPayload,
+                                eventTime = snapshot.PersistingBlock.Timestamp,
+                                eventIndex = index,
+                            };
+
+                            WriteToPsql(scEvent);
+
+                        }
+                        catch (Exception ex)
+                        {
+                            string connString = Settings.Default.SentryUrl;
+                            var ravenClient = new RavenClient(connString);
+                            ravenClient.Capture(new SentryEvent(ex));
+                            PrintErrorLogs(ex);
+                            throw ex;
                         }
                     }
                 }

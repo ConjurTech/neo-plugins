@@ -20,4 +20,8 @@
     <PackageReference Include="SharpRaven" Version="2.4.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\neo\neo\neo.csproj" />
+  </ItemGroup>
+
 </Project>

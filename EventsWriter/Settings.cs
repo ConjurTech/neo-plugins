@@ -12,18 +12,18 @@ namespace Neo.Plugins
         public string SentryUrl { get; }
         public HashSet<string> ContractHashList { get; }
 
-        public static Settings Default { get; }
+        public static Settings Default { get; private set; }
 
-        static Settings()
+        private Settings(IConfigurationSection section)
         {
-            Default = new Settings(Assembly.GetExecutingAssembly().GetConfiguration());
+            this.DatabaseConnString = new HashSet<string>(section.GetSection("DatabaseConnString").GetChildren().Select(p => p.Value.ToString()));
+            this.SentryUrl = section.GetSection("SentryUrl").Value;
+            this.ContractHashList = new HashSet<string>(section.GetSection("ContractHashList").GetChildren().Select(p => p.Value.ToString()));
         }
 
-        public Settings(IConfigurationSection section)
+        public static void Load(IConfigurationSection section)
         {
-            DatabaseConnString = new HashSet<string>(section.GetSection("DatabaseConnString").GetChildren().Select(p => p.Value.ToString()));
-            SentryUrl = section.GetSection("SentryUrl").Value;
-            ContractHashList = new HashSet<string>(section.GetSection("ContractHashList").GetChildren().Select(p => p.Value.ToString()));
+            Default = new Settings(section);
         }
     }
 }
