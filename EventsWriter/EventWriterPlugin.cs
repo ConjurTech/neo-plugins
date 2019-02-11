@@ -182,13 +182,20 @@ namespace Neo.Plugins
             {
                 WriteToEventTable(contractEvent, c);
 
-                if (contractEvent.eventType == "created")
+                switch (contractEvent.eventType)
                 {
-                    WriteToOfferTable(contractEvent, c);
-                }
-                else if (contractEvent.eventType == "filled")
-                {
-                    WriteToTradeTable(contractEvent, c);
+                    case "created":
+                        WriteToOfferTable(contractEvent, c);
+                        break;
+                    case "filled":
+                        WriteToTradeTable(contractEvent, c);
+                        break;
+                    case "swapCreated":
+                        WriteToSwapTable(contractEvent, c);
+                        break;
+                    default:
+                        Console.WriteLine("Event has no type");
+                        break;
                 }
             }
         }
@@ -289,7 +296,7 @@ namespace Neo.Plugins
 
         private static void WriteToTradeTable(SmartContractEvent contractEvent, NpgsqlConnection conn)
         {
-            Console.WriteLine(String.Format("Inserting {0} trade, block height: {1}", contractEvent.eventPayload, contractEvent.blockNumber));
+            Console.WriteLine(String.Format("Inserting trade {0}, block height: {1}", contractEvent.eventPayload, contractEvent.blockNumber));
 
             string connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
             try
@@ -332,6 +339,62 @@ namespace Neo.Plugins
                 {
                     // this is a unique key violation, which is fine, so do nothing.
                     Console.WriteLine("Trade already inserted, ignoring");
+                }
+                else
+                {
+                    throw ex;
+                }
+            }
+        }
+
+        private static void WriteToSwapTable(SmartContractEvent contractEvent, NpgsqlConnection conn) {
+            Console.WriteLine(String.Format("Inserting swap {0}, block height: {1}", contractEvent.eventPayload, contractEvent.blockNumber));
+
+            string connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            try
+            { 
+                // (makerAddress, takerAddress, assetID, amount, hashedSecret, expiryTime, feeAssetID, feeAmount)
+                var makerAddress = contractEvent.eventPayload[0].AsString();
+                var takerAddress = contractEvent.eventPayload[1].AsString();
+                var assetID = contractEvent.eventPayload[2].AsString();
+                var amount = contractEvent.eventPayload[3].AsNumber();
+                var hashedSecret = contractEvent.eventPayload[4].AsNumber();
+                var expiryTime = contractEvent.eventPayload[5].AsNumber();
+                var feeAssetID = contractEvent.eventPayload[6].AsString();
+                var feeAmount = contractEvent.eventPayload[7].AsNumber();
+                
+                using (var cmd = new NpgsqlCommand(
+                "INSERT INTO swaps (makerAddress, takerAddress, assetID, amount, expiryTime, feeAssetID, " +
+                "feeAmount, created_at, updated_at, eventTime, blockNumber, transactionHash, blockChain, " + 
+                "contractHash, hashedSecret)" +
+                "VALUES (@makerAddress, @takerAddress, @assetID, @amount, @expiryTime, @feeAssetID, " +
+                "@feeAmount, current_timestamp, current_timestamp, current_timestamp, @blockNumber, " +
+                "@transactionHash, @blockchain, @contractHash, @hashedSecret)", conn))
+                {
+                    cmd.Parameters.AddWithValue("makerAddress", NpgsqlDbType.Varchar, makerAddress);
+                    cmd.Parameters.AddWithValue("takerAddress", NpgsqlDbType.Varchar, takerAddress);
+                    cmd.Parameters.AddWithValue("assetID", NpgsqlDbType.Varchar, assetID);
+                    cmd.Parameters.AddWithValue("amount", NpgsqlDbType.Numeric, amount);
+                    cmd.Parameters.AddWithValue("expiryTime", NpgsqlDbType.Timestamp, expiryTime);
+                    cmd.Parameters.AddWithValue("feeAssetID", NpgsqlDbType.Varchar, feeAssetID);
+                    cmd.Parameters.AddWithValue("feeAmount", NpgsqlDbType.Numeric, feeAmount);
+                    cmd.Parameters.AddWithValue("eventTime", NpgsqlDbType.Timestamp, UnixTimeStampToDateTime(contractEvent.eventTime));
+                    cmd.Parameters.AddWithValue("blockNumber", NpgsqlDbType.Oid, contractEvent.blockNumber);
+                    cmd.Parameters.AddWithValue("transactionHash", contractEvent.transactionHash);
+                    cmd.Parameters.AddWithValue("blockchain", "neo");
+                    cmd.Parameters.AddWithValue("contractHash", contractEvent.contractHash);
+
+                    int nRows = cmd.ExecuteNonQuery();
+
+                    Console.WriteLine(String.Format("Rows inserted={0}", nRows));
+                }
+            }
+            catch (PostgresException ex)
+            {
+                if (ex.SqlState == "23505")
+                {
+                    // this is a unique key violation, which is fine, so do nothing.
+                    Console.WriteLine("Swap already inserted, ignoring");
                 }
                 else
                 {
