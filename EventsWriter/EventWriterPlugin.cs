@@ -1,8 +1,5 @@
-﻿using Neo.IO.Data.LevelDB;
-using Neo.IO.Json;
+﻿using Neo.IO.Json;
 using Neo.Ledger;
-using Neo.Network.P2P.Payloads;
-using Neo.SmartContract;
 using Neo.VM;
 using System;
 using System.Collections.Generic;
@@ -68,13 +65,19 @@ namespace Neo.Plugins
             Settings.Load(GetConfiguration());
         }
 
-        public void OnPersist(Persistence.Snapshot snapshot, List<ApplicationExecuted> applicationExecutedList)
+        public void OnPersist(Persistence.Snapshot snapshot, IReadOnlyList<ApplicationExecuted> applicationExecutedList)
         {
-           Console.WriteLine(String.Format("On persist called at blockheight={0}", snapshot.Height.ToString()));
+           Console.WriteLine(String.Format("On persist called at blockheight={0}", Blockchain.Singleton.Height.ToString()));
            foreach( var applicationExecuted in applicationExecutedList)
            {
                 foreach( var result in applicationExecuted.ExecutionResults)
                 {
+                    var transactionHash = applicationExecuted.Transaction.Hash.ToString().Substring(2);
+                    var blockHeight = Blockchain.Singleton.Height;
+                    var blockTime = Blockchain.Singleton.GetBlock(Blockchain.Singleton.GetBlockHash(blockHeight)).Timestamp;
+
+                    Console.WriteLine("Executed txn: {0}, block height: {1}", transactionHash, blockHeight);
+
                     if (result.VMState.HasFlag(VMState.FAULT))
                     {
                         Console.WriteLine("Transaction execution faulted!");
@@ -148,12 +151,12 @@ namespace Neo.Plugins
 
                             var scEvent = new SmartContractEvent
                             {
-                                blockNumber = snapshot.PersistingBlock.Index,
-                                transactionHash = applicationExecuted.Transaction.Hash.ToString().Substring(2),
+                                blockNumber = blockHeight,
+                                transactionHash = transactionHash,
                                 contractHash = scriptHash,
                                 eventType = eventType,
                                 eventPayload = eventPayload,
-                                eventTime = snapshot.PersistingBlock.Timestamp,
+                                eventTime = blockTime,
                                 eventIndex = index,
                             };
 
