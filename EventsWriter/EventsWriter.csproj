@@ -15,13 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Neo" Version="2.9.2" />
+    <PackageReference Include="Neo" Version="2.9.4" />
     <PackageReference Include="Npgsql" Version="4.0.3" />
     <PackageReference Include="SharpRaven" Version="2.4.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\neo\neo\neo.csproj" />
   </ItemGroup>
 
 </Project>
