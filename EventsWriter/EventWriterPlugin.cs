@@ -357,7 +357,7 @@ namespace Neo.Plugins
                 var takerAddress = contractEvent.eventPayload[1].AsString();
                 var assetID = contractEvent.eventPayload[2].AsString();
                 var amount = contractEvent.eventPayload[3].AsNumber();
-                var hashedSecret = contractEvent.eventPayload[4].AsNumber();
+                var hashedSecret = contractEvent.eventPayload[4].AsString();
                 var expiryTime = contractEvent.eventPayload[5].AsNumber();
                 var feeAssetID = contractEvent.eventPayload[6].AsString();
                 var feeAmount = contractEvent.eventPayload[7].AsNumber();
