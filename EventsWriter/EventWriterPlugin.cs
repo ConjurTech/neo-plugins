@@ -374,7 +374,7 @@ namespace Neo.Plugins
                     cmd.Parameters.AddWithValue("takerAddress", NpgsqlDbType.Varchar, takerAddress);
                     cmd.Parameters.AddWithValue("assetID", NpgsqlDbType.Varchar, assetID);
                     cmd.Parameters.AddWithValue("amount", NpgsqlDbType.Numeric, amount);
-                    cmd.Parameters.AddWithValue("expiryTime", NpgsqlDbType.Timestamp, expiryTime);
+                    cmd.Parameters.AddWithValue("expiryTime", NpgsqlDbType.Timestamp, UnixTimeStampToDateTime(expiryTime));
                     cmd.Parameters.AddWithValue("feeAssetID", NpgsqlDbType.Varchar, feeAssetID);
                     cmd.Parameters.AddWithValue("feeAmount", NpgsqlDbType.Numeric, feeAmount);
                     cmd.Parameters.AddWithValue("eventTime", NpgsqlDbType.Timestamp, UnixTimeStampToDateTime(contractEvent.eventTime));
