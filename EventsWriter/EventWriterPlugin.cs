@@ -364,9 +364,9 @@ namespace Neo.Plugins
                 var feeAmount = contractEvent.eventPayload[7].AsNumber();
                 
                 using (var cmd = new NpgsqlCommand(
-                "INSERT INTO swaps (makerAddress, takerAddress, assetID, amount, expiryTime, feeAssetID, " +
-                "feeAmount, created_at, updated_at, eventTime, blockNumber, transactionHash, blockChain, " + 
-                "contractHash, hashedSecret)" +
+                "INSERT INTO swaps (maker_address, taker_address, asset_id, amount, expiry_time, fee_asset_id, " +
+                "fee_amount, created_at, updated_at, event_time, block_number, transaction_hash, blockchain, " + 
+                "contract_hash, hashed_secret)" +
                 "VALUES (@makerAddress, @takerAddress, @assetID, @amount, @expiryTime, @feeAssetID, " +
                 "@feeAmount, current_timestamp, current_timestamp, current_timestamp, @blockNumber, " +
                 "@transactionHash, @blockchain, @contractHash, @hashedSecret)", conn))
