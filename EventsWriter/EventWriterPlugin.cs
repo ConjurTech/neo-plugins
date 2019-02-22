@@ -194,7 +194,6 @@ namespace Neo.Plugins
                         WriteToSwapTable(contractEvent, c);
                         break;
                     default:
-                        Console.WriteLine("Event has no type");
                         break;
                 }
             }
