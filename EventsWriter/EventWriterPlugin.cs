@@ -382,6 +382,7 @@ namespace Neo.Plugins
                     cmd.Parameters.AddWithValue("transactionHash", contractEvent.transactionHash);
                     cmd.Parameters.AddWithValue("blockchain", "neo");
                     cmd.Parameters.AddWithValue("contractHash", contractEvent.contractHash);
+                    cmd.Parameters.AddWithValue("hashedSecret", NpgsqlDbType.Varchar, hashedSecret);
 
                     int nRows = cmd.ExecuteNonQuery();
 
