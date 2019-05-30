@@ -11,6 +11,7 @@ using NpgsqlTypes;
 using SharpRaven;
 using SharpRaven.Data;
 using static Neo.Ledger.Blockchain;
+using Neo.Persistence;
 
 namespace Neo.Plugins
 {
@@ -409,6 +410,16 @@ namespace Neo.Plugins
             DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             dtDateTime = dtDateTime.AddSeconds(unixTimeStamp);
             return dtDateTime;
+        }
+
+        public void OnCommit(Snapshot snapshot)
+        {
+
+        }
+
+        public bool ShouldThrowExceptionFromCommit(Exception ex)
+        {
+            return false;
         }
 
         private void PrintErrorLogs(Exception ex)
