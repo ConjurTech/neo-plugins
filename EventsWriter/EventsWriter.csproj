@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Version>2.9.0</Version>
-    <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
+    <Version>2.10.2</Version>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Neo.Plugins</RootNamespace>
     <AssemblyName>EventsWriter</AssemblyName>
   </PropertyGroup>
@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Neo" Version="2.9.4" />
+    <PackageReference Include="Neo" Version="2.10.2" />
     <PackageReference Include="Npgsql" Version="4.0.3" />
     <PackageReference Include="SharpRaven" Version="2.4.0" />
   </ItemGroup>
